@@ -5,6 +5,8 @@
 **Task size:** Implementation-level
 **Team filter:** Configurable placeholder until the exact Jira group/account/team mapping is confirmed
 
+**Batch approach decisions:** Approach 1 = process items sequentially when ordering, dependencies, or rate limits matter; Approach 2 = process independent items in parallel; Approach 3 = use a script or bulk operation for repeatable multi-item processing.
+
 **Status snapshot (2026-09-18):** Planning and requirements clarification are complete. The repository currently contains the specification and backlog only; Jira retrieval, risk evaluation, report generation, integrations, CI workflow, and automated tests have not been implemented. Completed checkboxes below reflect only verified repository work.
 
 ## Phase 1: Setup
@@ -13,8 +15,8 @@
 - [ ] Confirm the Confluence space key and stable page ID; replace the draft URL in configuration. — GitHub issue #4 — MCP
 - [ ] Confirm the Gmail SMTP host, port, sender, recipient list, and authentication approach. — GitHub issue #5 — custom skill
 - [ ] Confirm the Microsoft Teams destination and webhook or workflow endpoint. — GitHub issue #6 — custom skill
-- [ ] Create the Python package structure for configuration, clients, risk rules, rendering, delivery, and tests. — GitHub issue #7 — custom skill
-- [ ] Add runtime and development dependencies with pinned or bounded versions. — GitHub issue #8 — custom skill
+- [ ] Create the Python package structure for configuration, clients, risk rules, rendering, delivery, and tests. — GitHub issue #7 — custom skill — Approach 3
+- [ ] Add runtime and development dependencies with pinned or bounded versions. — GitHub issue #8 — custom skill — Approach 3
 - [ ] Define non-secret configuration for Jira base URL, project keys `SAM1` and `KAN`, team filter, thresholds, timezone, and report destinations. — GitHub issue #9 — custom skill
 - [ ] Define required secret names for Atlassian, SMTP, and Teams credentials without storing values in the repository. — GitHub issue #1 — custom skill
 - [ ] Add `.env.example` containing safe placeholder names and no real credentials. — GitHub issue #10 — custom skill
@@ -27,22 +29,22 @@
 - [ ] Implement configuration loading from environment variables and validated defaults. — custom skill
 - [ ] Validate required configuration at startup and produce actionable errors for missing values. — custom skill
 - [ ] Implement an Atlassian API client with token authentication, timeouts, pagination, and retry handling. — MCP
-- [ ] Retrieve issues for projects `SAM1` and `KAN` across all issue types. — MCP
-- [ ] Retrieve active and recently completed sprints, sprint dates, commitments, and completion data. — MCP
-- [ ] Retrieve issue status, priority, assignee, due date, labels, estimates, update timestamps, and source URLs. — MCP
-- [ ] Retrieve issue links, dependency direction, changelog data, and status history needed for risk evidence. — MCP
-- [ ] Apply the configurable team filter without hard-coding individual team members. — MCP
-- [ ] Implement overdue detection for unresolved issues at least one day past due. — custom skill
-- [ ] Implement blocked detection for blocked statuses and unresolved blocking dependencies. — custom skill
-- [ ] Implement stale detection for active issues with no update for at least five calendar days. — custom skill
-- [ ] Implement missed-commitment detection for incomplete sprint issues and completion below 80%. — custom skill
-- [ ] Implement high-priority detection for Highest and High Jira priorities. — custom skill
-- [ ] Implement dependency-risk detection when a blocking predecessor is overdue, blocked, or stale. — custom skill
-- [ ] Implement story-point variance detection using the configured 80% and final-20%-of-sprint thresholds. — custom skill
-- [ ] Assign configurable High, Medium, or Low severity with the triggering rule and evidence. — custom skill
-- [ ] Deduplicate findings that are triggered by multiple related rules while preserving all triggered signals. — custom skill
-- [ ] Calculate project, sprint, and overall risk summaries. — custom skill
-- [ ] Generate Markdown with executive summary, grouped findings, recommended actions, timestamps, and Jira links. — custom skill
+- [ ] Retrieve issues for projects `SAM1` and `KAN` across all issue types. — MCP — Approach 3
+- [ ] Retrieve active and recently completed sprints, sprint dates, commitments, and completion data. — MCP — Approach 2
+- [ ] Retrieve issue status, priority, assignee, due date, labels, estimates, update timestamps, and source URLs. — MCP — Approach 3
+- [ ] Retrieve issue links, dependency direction, changelog data, and status history needed for risk evidence. — MCP — Approach 3
+- [ ] Apply the configurable team filter without hard-coding individual team members. — MCP — Approach 3
+- [ ] Implement overdue detection for unresolved issues at least one day past due. — custom skill — Approach 3
+- [ ] Implement blocked detection for blocked statuses and unresolved blocking dependencies. — custom skill — Approach 3
+- [ ] Implement stale detection for active issues with no update for at least five calendar days. — custom skill — Approach 3
+- [ ] Implement missed-commitment detection for incomplete sprint issues and completion below 80%. — custom skill — Approach 3
+- [ ] Implement high-priority detection for Highest and High Jira priorities. — custom skill — Approach 3
+- [ ] Implement dependency-risk detection when a blocking predecessor is overdue, blocked, or stale. — custom skill — Approach 3
+- [ ] Implement story-point variance detection using the configured 80% and final-20%-of-sprint thresholds. — custom skill — Approach 3
+- [ ] Assign configurable High, Medium, or Low severity with the triggering rule and evidence. — custom skill — Approach 3
+- [ ] Deduplicate findings that are triggered by multiple related rules while preserving all triggered signals. — custom skill — Approach 3
+- [ ] Calculate project, sprint, and overall risk summaries. — custom skill — Approach 3
+- [ ] Generate Markdown with executive summary, grouped findings, recommended actions, timestamps, and Jira links. — custom skill — Approach 3
 - [ ] Add a command-line entry point that supports a default report run and optional project or sprint scope. — custom skill
 - [ ] Return a non-zero exit code when data retrieval, validation, or report generation fails. — custom skill
 
@@ -52,7 +54,7 @@
 
 - [ ] Create a workflow for Monday 09:00 Asia/Kolkata execution using the correct UTC cron expression. — custom skill
 - [ ] Add `workflow_dispatch` inputs for optional project and sprint selection. — custom skill
-- [ ] Configure Python setup, dependency installation, and the report command in the workflow. — custom skill
+- [ ] Configure Python setup, dependency installation, and the report command in the workflow. — custom skill — Approach 3
 - [ ] Map GitHub encrypted Secrets to the runtime environment without printing secret values. — custom skill
 - [ ] Upload the canonical Markdown report as a workflow artifact. — custom skill
 - [ ] Upload sanitized diagnostics on failure and fail the workflow for incomplete delivery. — custom skill
@@ -60,44 +62,44 @@
 ### Confluence
 
 - [ ] Implement a Confluence client using the stable space key and page ID. — MCP
-- [ ] Update the target page with a dated report section while preserving prior report history. — MCP
+- [ ] Update the target page with a dated report section while preserving prior report history. — MCP — Approach 1
 - [ ] Make the page update idempotent so rerunning the same report does not duplicate content. — custom skill
 - [ ] Enforce manager edit access and view-only access for other users as agreed. — MCP
 
 ### Email
 
 - [ ] Implement an SMTP adapter using Gmail configuration and encrypted runtime secrets. — custom skill
-- [ ] Send the Markdown report or an HTML-rendered equivalent to the approved recipient list. — custom skill
+- [ ] Send the Markdown report or an HTML-rendered equivalent to the approved recipient list. — custom skill — Approach 2
 - [ ] Include report period, overall risk, and a link to the Confluence page when available. — custom skill
 - [ ] Handle SMTP connection, authentication, and delivery failures without exposing credentials. — custom skill
 
 ### Microsoft Teams
 
 - [ ] Implement a Teams webhook or workflow adapter for the confirmed destination. — custom skill
-- [ ] Post a concise risk summary with counts, highest-severity findings, and report links. — custom skill
+- [ ] Post a concise risk summary with counts, highest-severity findings, and report links. — custom skill — Approach 2
 - [ ] Handle Teams rate limits and delivery failures with sanitized diagnostics. — custom skill
 
 ## Phase 4: Testing
 
-- [ ] Add configuration tests for valid settings, missing secrets, invalid thresholds, and timezone handling. — custom skill
-- [ ] Add Jira client tests for pagination, retries, API errors, empty results, and normalized fields. — custom skill
-- [ ] Add unit tests for each risk rule and both sides of every threshold boundary. — custom skill
-- [ ] Test overdue, blocked, stale, missed-commitment, high-priority, dependency, and story-point variance cases. — custom skill
-- [ ] Test finding deduplication and severity assignment. — custom skill
-- [ ] Test Markdown rendering with no findings, mixed severities, missing optional fields, and multiple projects. — custom skill
+- [ ] Add configuration tests for valid settings, missing secrets, invalid thresholds, and timezone handling. — custom skill — Approach 3
+- [ ] Add Jira client tests for pagination, retries, API errors, empty results, and normalized fields. — custom skill — Approach 3
+- [ ] Add unit tests for each risk rule and both sides of every threshold boundary. — custom skill — Approach 3
+- [ ] Test overdue, blocked, stale, missed-commitment, high-priority, dependency, and story-point variance cases. — custom skill — Approach 3
+- [ ] Test finding deduplication and severity assignment. — custom skill — Approach 3
+- [ ] Test Markdown rendering with no findings, mixed severities, missing optional fields, and multiple projects. — custom skill — Approach 3
 - [ ] Test CLI success and failure exit codes. — custom skill
-- [ ] Add mocked Confluence tests for page creation/update, history preservation, idempotency, and permissions handling. — custom skill
-- [ ] Add mocked SMTP tests for successful delivery and authentication/connection failures. — custom skill
-- [ ] Add mocked Teams tests for successful posts, malformed responses, and rate limits. — custom skill
-- [ ] Add GitHub Actions validation for scheduled execution, manual inputs, secrets mapping, artifact upload, and failure behavior. — custom skill
-- [ ] Add an end-to-end dry run using sanitized fixture data from both Jira projects. — custom skill
-- [ ] Run linting, formatting, static type checks, and the complete test suite in CI. — custom skill
+- [ ] Add mocked Confluence tests for page creation/update, history preservation, idempotency, and permissions handling. — custom skill — Approach 3
+- [ ] Add mocked SMTP tests for successful delivery and authentication/connection failures. — custom skill — Approach 3
+- [ ] Add mocked Teams tests for successful posts, malformed responses, and rate limits. — custom skill — Approach 3
+- [ ] Add GitHub Actions validation for scheduled execution, manual inputs, secrets mapping, artifact upload, and failure behavior. — custom skill — Approach 3
+- [ ] Add an end-to-end dry run using sanitized fixture data from both Jira projects. — custom skill — Approach 3
+- [ ] Run linting, formatting, static type checks, and the complete test suite in CI. — custom skill — Approach 3
 - [ ] Verify no secret-bearing files, tokens, passwords, or unnecessary personal data are tracked or logged. — custom skill
 
 ## Phase 5: Documentation
 
 - [ ] Document local setup, supported Python version, dependency installation, and safe `.env` usage. — custom skill
-- [ ] Document every configuration variable, default threshold, severity mapping, and timezone conversion. — custom skill
+- [ ] Document every configuration variable, default threshold, severity mapping, and timezone conversion. — custom skill — Approach 3
 - [ ] Document Jira project scope, team-filter configuration, required API permissions, and source fields. — custom skill
 - [ ] Document GitHub Actions setup, encrypted Secret names, scheduled runs, manual dispatch, and artifacts. — custom skill
 - [ ] Document Confluence, Gmail SMTP, and Teams setup and required permissions. — custom skill
