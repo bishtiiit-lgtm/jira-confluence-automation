@@ -9,17 +9,17 @@
 
 ## Phase 1: Setup
 
-- [ ] Confirm the Jira team filter value for `bishtiiit` and document the final group, account ID, or project-role mapping. — MCP
-- [ ] Confirm the Confluence space key and stable page ID; replace the draft URL in configuration. — MCP
-- [ ] Confirm the Gmail SMTP host, port, sender, recipient list, and authentication approach. — custom skill
-- [ ] Confirm the Microsoft Teams destination and webhook or workflow endpoint. — custom skill
-- [ ] Create the Python package structure for configuration, clients, risk rules, rendering, delivery, and tests. — custom skill
-- [ ] Add runtime and development dependencies with pinned or bounded versions. — custom skill
-- [ ] Define non-secret configuration for Jira base URL, project keys `SAM1` and `KAN`, team filter, thresholds, timezone, and report destinations. — custom skill
-- [ ] Define required secret names for Atlassian, SMTP, and Teams credentials without storing values in the repository. — custom skill
-- [ ] Add `.env.example` containing safe placeholder names and no real credentials. — custom skill
+- [ ] Confirm the Jira team filter value for `bishtiiit` and document the final group, account ID, or project-role mapping. — GitHub issue #3 — MCP
+- [ ] Confirm the Confluence space key and stable page ID; replace the draft URL in configuration. — GitHub issue #4 — MCP
+- [ ] Confirm the Gmail SMTP host, port, sender, recipient list, and authentication approach. — GitHub issue #5 — custom skill
+- [ ] Confirm the Microsoft Teams destination and webhook or workflow endpoint. — GitHub issue #6 — custom skill
+- [ ] Create the Python package structure for configuration, clients, risk rules, rendering, delivery, and tests. — GitHub issue #7 — custom skill
+- [ ] Add runtime and development dependencies with pinned or bounded versions. — GitHub issue #8 — custom skill
+- [ ] Define non-secret configuration for Jira base URL, project keys `SAM1` and `KAN`, team filter, thresholds, timezone, and report destinations. — GitHub issue #9 — custom skill
+- [ ] Define required secret names for Atlassian, SMTP, and Teams credentials without storing values in the repository. — GitHub issue #1 — custom skill
+- [ ] Add `.env.example` containing safe placeholder names and no real credentials. — GitHub issue #10 — custom skill
 - [x] Verify `.env` and Python caches are excluded from Git; generated reports are not currently produced. — custom skill
-- [ ] Add structured logging with secret and personal-data redaction. — custom skill
+- [ ] Add structured logging with secret and personal-data redaction. — GitHub issue #2 — custom skill
 - [x] Define the report data model for metadata, findings, severity, evidence, recommendations, and source links in `project_spec.md`. — custom skill
 
 ## Phase 2: Core Features
