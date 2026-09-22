@@ -1,0 +1,70 @@
+{
+  "files": [
+    {
+      "path": "backlog.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "instructions/calculate-compound-interest.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "instructions/create-status-report.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "instructions/creating-instructions.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "instructions/main.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "instructions/update-confluence-project-status.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "instructions/use-retrieve_issue.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "instructions/validate-markdown.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "PROJECT_IDEAS.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "project_spec.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "README.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "WEEKLY_STATUS_REPORT_TEMPLATE.md",
+      "status": "pass",
+      "issues": []
+    }
+  ],
+  "summary": {
+    "files_checked": 12,
+    "files_passed": 12,
+    "files_failed": 0,
+    "issues": 0
+  }
+}

@@ -24,3 +24,8 @@
   + Keywords: retrieve Jira issue, issue details, Jira status, issue metadata
   + Target: `**/*.md`
   + Exceptions: not for creating, editing, or transitioning Jira issues
+
+- [./instructions/validate-markdown.agent.md](./validate-markdown.agent.md) — Validate Markdown files individually for consistent formatting and report JSON findings.
+  + Keywords: validate Markdown, format check, Markdown lint, document consistency
+  + Target: `**/*.md`
+  + Exceptions: not for rewriting content or checking non-Markdown files
