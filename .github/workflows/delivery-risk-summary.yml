@@ -1,0 +1,49 @@
+name: Delivery Risk Summary
+
+on:
+  schedule:
+    - cron: "30 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "Optional Jira project key"
+        required: false
+        type: string
+      sprint:
+        description: "Optional Jira sprint identifier"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate workflow inputs
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_KEY: ${{ inputs.project || '' }}
+      SPRINT_ID: ${{ inputs.sprint || '' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Report requested scope
+        run: |
+          echo "Delivery Risk Summary workflow initialized."
+          echo "Project scope: ${PROJECT_KEY:-all configured projects}"
+          echo "Sprint scope: ${SPRINT_ID:-active and recently completed sprints}"
+          echo "Application report generation is not implemented yet."
+
+      - name: Upload existing reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: delivery-risk-summary-reports
+          path: reports/
+          if-no-files-found: ignore
