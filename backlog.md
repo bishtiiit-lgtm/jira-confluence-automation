@@ -1,5 +1,7 @@
 # Delivery Risk Summary Implementation Backlog
 
+> Historical note: this backlog contains legacy Python-oriented planning artifacts. The active implementation baseline is the ratified Node.js/Express/React/TypeScript architecture defined in the constitution and current specification. Older Python items are retained only as historical context and should not be used as active work instructions.
+
 **MVP priority:** Jira risk engine + Markdown report
 **Execution:** GitHub Actions scheduled and manual runs included in MVP
 **Task size:** Implementation-level

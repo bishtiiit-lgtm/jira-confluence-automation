@@ -1,23 +1,30 @@
-# Python Calculator
+# Jira/Confluence Delivery Risk Summary
 
-A simple Python calculator project that demonstrates addition, subtraction, and multiplication.
+This repository is the Node.js/TypeScript implementation for the Jira/Confluence Delivery Risk Summary application. It follows the ratified constitution and the approved specification and intentionally supersedes the earlier Python-based design notes.
 
-## Operations
+## Architecture and package boundaries
 
-The `calculator.py` module provides:
+The active implementation is organized as a small monorepo:
 
-- `add(first_number, second_number)`
-- `subtract(first_number, second_number)`
-- `multiply(first_number, second_number)`
+- `backend/` — Express API, adapters, persistence, risk orchestration, and report workflow logic.
+- `frontend/` — React 18 + Vite client for reports, runs, and operational views.
+- `packages/shared-types/` — shared API and domain types, enum values, and serialized contracts.
+- `packages/report-model/` — report model objects used by rendering, persistence, and UI snapshots.
+- `packages/validation/` — validation helpers and configuration guardrails.
+- `spec/` — governing requirements, architecture decisions, and implementation planning.
 
-For example, `multiply(10, 3)` returns `30`.
+## Historical note
 
-## Run the example
+The older Python architecture in legacy documents such as `project_spec.md` and the historical backlog entries is preserved only for traceability. It is intentionally superseded by the current Node.js/Express/React/PostgreSQL baseline and must not be used as the active implementation guide.
 
-From this directory, run:
+## Local development
+
+Use the workspace scripts from the repository root to run the backend and frontend together:
 
 ```bash
-python main.py
+npm install
+npm run dev:backend
+npm run dev:frontend
 ```
 
-The script prints the results of adding, subtracting, and multiplying two example numbers.
+The implementation remains aligned to the approved Node.js/Express/React/TypeScript baseline in the constitution and specification.

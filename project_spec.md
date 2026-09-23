@@ -1,5 +1,7 @@
 # Delivery Risk Summary - Technical Specification
 
+> Historical archival note: this document reflects the earlier Python implementation approach and is superseded by the ratified Node.js/Express/React/PostgreSQL architecture in `spec/constitution.md` and `spec/specification.md`. It remains for historical traceability only and must not guide active implementation.
+
 ## 1. Overview
 
 Build a Python automation that gathers delivery signals from Jira and publishes a weekly Delivery Risk Summary for a Delivery Manager overseeing five people working on product development. The first implementation targets the Jira site `https://bishtiiit.atlassian.net`, projects `SAM1` and `KAN`, and all issue types.
