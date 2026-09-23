@@ -7,7 +7,9 @@
 
 ## Delivery Approach
 
-Implement the system in vertical slices. Each phase ends with a usable, testable increment and a milestone gate. The backend owns integration, risk, persistence, authorization, and publication behavior; the frontend consumes versioned API contracts. GitHub Actions is the scheduler and worker host for MVP, invoking one shared report command for scheduled and manual runs.
+Implement the system in vertical slices. Each phase ends with a usable, testable increment and a milestone gate. The backend owns integration, risk, persistence, and publication behavior; the frontend consumes versioned API contracts. GitHub Actions is the scheduler and worker host for MVP, invoking one shared report command for scheduled and manual runs.
+
+Authentication and Authorization are explicitly out of scope for this implementation phase. Any identity provider, session model, role matrix, or OIDC work is deferred to a separate scope and will not be included in the active backlog unless a later decision reintroduces it.
 
 ## Phase 0: Project Baseline and Architecture
 
@@ -37,20 +39,20 @@ Implement the system in vertical slices. Each phase ends with a usable, testable
 
 **Milestone 1:** Migrations apply and roll back in disposable PostgreSQL 15; repository integration tests prove idempotency, finding uniqueness, UTC storage, retention boundaries, and failure-safe transactions.
 
-## Phase 2: Authentication, Authorization, and API Contracts
+## Phase 2: API Contracts and Execution Boundaries
 
-**Objective:** Secure the application and make the frontend/backend boundary stable.
+**Objective:** Make the frontend/backend contract stable and the shared run workflow executable without adding identity or authorization work.
 
 **Work items:**
 
-- Implement OIDC authorization-code with PKCE in the frontend and JWT validation in Express.
-- Map configured identity-provider groups to `DeliveryManager`, `ReportViewer`, and `Administrator`.
-- Enforce route permissions, safe error envelopes, correlation IDs, input validation, cursor pagination, and maximum page size 100.
+- Publish shared TypeScript request/response types and stable enum values.
+- Enforce safe error envelopes, correlation IDs, input validation, cursor pagination, and maximum page size 100.
 - Implement `/health/live`, `/health/ready`, report listing/detail, finding detail, run creation/status, configuration validation, and publication retry endpoints.
 - Add `Idempotency-Key` handling and `409` conflict behavior for equivalent queued/running runs.
-- Publish shared TypeScript request/response types and stable enum values.
+- Define the run, publication, and workflow-artifact state behavior for scheduled and manual executions.
+- Keep Authentication and Authorization explicitly out of scope for this phase; defer any OIDC, session, or permission work to a separate decision package.
 
-**Milestone 2:** Integration tests demonstrate authenticated reads, role boundaries, invalid input handling, idempotent run creation, safe errors, health semantics, and correlation-ID propagation.
+**Milestone 2:** Integration tests demonstrate contract stability, invalid input handling, idempotent run creation, safe errors, health semantics, and correlation-ID propagation.
 
 ## Phase 3: Jira Adapter and Normalization
 
@@ -91,8 +93,9 @@ Implement the system in vertical slices. Each phase ends with a usable, testable
 - Render executive summary, period/asOf metadata, project and sprint summaries, grouped findings, evidence, recommendations, and stable Jira links as Markdown.
 - Implement Confluence storage-format updates for space `teamb94933220eab48ca921cf26455822d56` and page `uIAB`.
 - Add report-period idempotency markers, historical dated sections, version-conflict refetch/retry, and sanitized diagnostics.
-- Implement SMTP/Gmail, Teams, and GitHub artifact adapters with channel-specific summaries that cannot contradict Markdown.
-- Treat Jira as the required destination; classify optional destination failures as warnings and expose pipeline-success reports in the UI.
+- Implement SMTP/Gmail and Teams adapters with channel-specific summaries that cannot contradict Markdown.
+- Treat Confluence as the required report destination; classify email and Teams failures as warnings and expose pipeline-success reports in the UI.
+- Upload the canonical Markdown as a GitHub Actions workflow output after report rendering and persistence. Record artifact upload status separately; an upload failure keeps the report visible but makes the workflow exit unsuccessfully.
 - Persist every publication attempt and support idempotent per-destination retry.
 
 **Milestone 5:** Adapter and renderer integration tests prove stable links, empty/mixed-severity rendering, Confluence no-duplication, conflict handling, destination retries, secret redaction, and required-vs-optional status semantics.
@@ -103,11 +106,11 @@ Implement the system in vertical slices. Each phase ends with a usable, testable
 
 **Work items:**
 
-- Implement the run state machine: `Queued`, `Running`, `Succeeded`, `Failed` for pipeline status and `Pending`, `Succeeded`, `CompletedWithWarnings`, `Failed` for publication status.
+- Implement the public run state machine: `Queued`, `Running`, `Completed`, `Completed with delivery warnings`, and `Failed`. Track pipeline, publication, and workflow-artifact details separately while exposing the same final-state labels through the API and UI.
 - Orchestrate validation, Jira retrieval, normalization, risk evaluation, rendering, persistence, publication, and audit logging with correlation IDs.
 - Make scope/period execution idempotent and enforce maximum one concurrent run per scope.
 - Add GitHub Actions Monday schedule at `30 3 * * 1` UTC, manual dispatch inputs for projects and sprint, protected environment secrets, 20-minute timeout, artifact retention, and sanitized diagnostics.
-- Ensure workflow exit status reflects pipeline failure or required Jira publication failure, while optional destination warnings remain visible.
+- Ensure workflow exit status reflects pipeline failure, required Confluence publication failure, or artifact upload failure, while optional email and Teams warnings remain visible.
 
 **Milestone 6:** A disposable end-to-end run produces the same result from scheduled and manual inputs, survives reruns without duplicate findings/publication sections, and uploads the canonical artifact or sanitized failure diagnostics.
 
@@ -146,7 +149,7 @@ Implement the system in vertical slices. Each phase ends with a usable, testable
 - Every run has a correlation ID, immutable scope/period, `asOf` timestamp, audit record, and independently recorded publication attempts.
 - Every finding has a severity, deterministic signal list, sanitized evidence, recommendation, and source URL.
 - Failed retrieval, validation, normalization, risk evaluation, rendering, or persistence never produces a successful report.
-- Optional publication failures never erase a pipeline-success report; required Jira publication failure is visible and causes the workflow to fail.
+- Optional email and Teams failures never erase a pipeline-success report; required Confluence failure is visible and causes the run/workflow to fail. Artifact upload failure leaves the report visible, records artifact status `Failed`, and causes the workflow to exit unsuccessfully.
 - Historical reports remain readable after configuration changes and are retained according to policy.
 
 ## Suggested Delivery Order

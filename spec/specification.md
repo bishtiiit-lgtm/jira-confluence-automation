@@ -71,7 +71,7 @@ Runs the same command invoked by scheduled and manually dispatched GitHub Action
 - Sprint scope is optional and is validated before external calls begin.
 - A duplicate request for the same scope and reporting period does not create duplicate findings or duplicate publication sections.
 - Unauthorized users receive a safe authorization error and no job is started.
-- A failed run is marked failed and does not publish a successful partial report.
+- A failed run is marked `Failed` and does not publish a successful partial report.
 
 ### P1: Run the scheduled weekly report
 
@@ -132,7 +132,6 @@ The frontend shall use a consistent application shell with a primary navigation 
 - Overall risk banner showing `High`, `Medium`, `Low`, or `No findings`.
 - Report period, generated timestamp, scope, last successful run, and run status.
 - Summary cards for total findings, High findings, overdue items, blocked items, stale items, and missed commitments.
-- A failed data-pipeline run is marked failed and does not publish a report.
 - Recent runs table with status, scope, duration, requester or schedule source, and links to details.
 - Primary actions: `View report`, `Run report`, and `View run history` according to permissions.
 
@@ -149,6 +148,8 @@ The frontend shall use a consistent application shell with a primary navigation 
 - Empty state explaining that no completed report is available and showing the next scheduled run.
 - Partial-failure state when a report exists but one publication destination failed.
 - Failure state with a sanitized error, retry action, and link to run details.
+
+If validation, retrieval, normalization, risk evaluation, rendering, or persistence fails, the run is marked `Failed` and no report is published. The persisted failure is visible in run history with sanitized diagnostics.
 
 ### 5.2 Report Detail
 
@@ -331,11 +332,12 @@ The engine shall assign severity using the highest-severity triggered signal: ov
 
 - Markdown shall be the canonical report format.
 - The report shall include generation timestamp, reporting period, overall risk, project and sprint summaries, grouped findings, severity, evidence, recommendations, and Jira source links.
-- The Confluence adapter shall update space `teamb94933220eab48ca921cf26455822d56`, page target `https://bishtiiit.atlassian.net/wiki/x/uIAB`, using the Confluence storage representation. It shall insert or replace a section marked by the report-period idempotency marker, preserve prior dated sections, and retry once after refetching the page version on a conflict. Confluence manager edit access is enforced by the MCP tooling.
+- The Confluence adapter shall update space `teamb94933220eab48ca921cf26455822d56`, page target `https://bishtiiit.atlassian.net/wiki/x/uIAB`, using the Confluence storage representation. It shall insert or replace a section marked by the report-period idempotency marker, preserve prior dated sections, and retry once after refetching the page version on a conflict. Confluence is the required report destination; manager edit access is enforced by the MCP tooling.
 - The SMTP adapter shall send the report or approved HTML rendering to the configured recipient list.
 - The Teams adapter shall post a concise summary containing counts, highest-severity findings, and report links.
 - Delivery adapters shall use bounded timeouts, safe retries where appropriate, and sanitized diagnostics.
-- Jira retrieval, validation, normalization, risk evaluation, rendering, and persistence form the data pipeline. A failure in any of these produces pipeline status `Failed` and no report publication. Publication has independent per-destination statuses. Jira is the only required destination; a Jira failure makes publication `Failed`, while Confluence, email, Teams, and the GitHub artifact are optional and may produce `Completed with delivery warnings`. A pipeline-success report is visible in the UI regardless of optional publication failures, and each destination can be retried idempotently.
+- Jira retrieval, validation, normalization, risk evaluation, rendering, and persistence form the data pipeline. A failure in any of these produces run status `Failed` and no report publication. Publication has independent per-destination statuses. Confluence is the only required report destination; a Confluence failure makes the run `Failed`, while email and Teams failures produce `Completed with delivery warnings`. A pipeline-success report remains visible in the UI after publication failure, and each destination can be retried idempotently.
+- The canonical Markdown file is a GitHub Actions workflow output, not a publication destination. The workflow uploads it after successful report rendering and persistence. A missing or failed artifact upload does not invalidate the persisted report, but the workflow exits unsuccessfully and records artifact status `Failed`; sanitized diagnostics are uploaded when possible.
 
 ### 6.5 Web API and frontend
 
@@ -346,7 +348,7 @@ The engine shall assign severity using the highest-severity triggered signal: ov
 - User-visible timestamps shall identify the relevant timezone.
 - OIDC is the authentication contract. The frontend uses the authorization-code flow with PKCE; the backend validates issuer, audience, signature, expiry, and nonce claims. The stable subject claim is the user identifier. Roles are supplied through a configured group/role claim for `DeliveryManager`, `ReportViewer`, and `Administrator`. Local development may use a documented development identity only when `AUTH_MODE=development`; production rejects that mode.
 - `DeliveryManager` and `Administrator` may create runs. Only `Administrator` may change database-backed configuration. All report and finding reads require authentication; administrator diagnostics and audit events require `Administrator`.
-- API requests use ISO 8601 UTC timestamps, camelCase JSON, stable enum strings, cursor pagination with a maximum page size of 100, `Idempotency-Key` on run creation, and correlation IDs returned in `X-Correlation-Id`. Validation errors use `400`, authentication `401`, authorization `403`, missing resources `404`, conflicts `409`, upstream failures `502`, and unexpected failures `500`.
+- API requests use ISO 8601 UTC timestamps, camelCase JSON, stable enum strings, cursor pagination with a maximum page size of 100, `Idempotency-Key` on run creation, and correlation IDs returned in `X-Correlation-Id`. Public run status values are exactly `Queued`, `Running`, `Completed`, `Completed with delivery warnings`, and `Failed`; these values are used by both the API and UI. Validation errors use `400`, authentication `401`, authorization `403`, missing resources `404`, conflicts `409`, upstream failures `502`, and unexpected failures `500`.
 
 ### 6.6 Persistence
 
@@ -410,7 +412,7 @@ Returns application and PostgreSQL health without exposing infrastructure secret
 
 ### API behavior
 
-`/health/live` reports process liveness and `/health/ready` reports database and required configuration readiness. List endpoints return `{ items, nextCursor }`. Run status separates `pipelineStatus` (`Queued`, `Running`, `Succeeded`, `Failed`) from `publicationStatus` (`Pending`, `Succeeded`, `CompletedWithWarnings`, `Failed`). Manual runs are rejected with `409` when an equivalent scope/period is already queued or running, or return the existing run when the idempotency key matches. All errors use `{ error: { code, message, retryable, correlationId, details? } }` without upstream payloads or secrets.
+`/health/live` reports process liveness and `/health/ready` reports database and required configuration readiness. List endpoints return `{ items, nextCursor }`. Public run status uses exactly `Queued`, `Running`, `Completed`, `Completed with delivery warnings`, and `Failed`; the response also exposes separate pipeline, publication, and workflow-artifact details using the same final-state labels where applicable. Manual runs are rejected with `409` when an equivalent scope/period is already queued or running, or return the existing run when the idempotency key matches. All errors use `{ error: { code, message, retryable, correlationId, details? } }` without upstream payloads or secrets.
 
 ## 9. Non-Functional Requirements
 
@@ -422,7 +424,7 @@ Returns application and PostgreSQL health without exposing infrastructure secret
 - **Compatibility:** support the versions declared by the constitution: React 18, Vite, Node.js, Express, PostgreSQL 15, and Docker Compose.
 - **Maintainability:** keep domain logic independent from Express and React, use TypeScript types at service boundaries, and document migrations and configuration.
 - **Browser support:** current and previous major versions of Chrome, Edge, Firefox, and Safari; minimum supported viewport is 320 CSS pixels.
-- **Observability:** logs include timestamp, level, service, environment, correlationId, runId, actorId where permitted, event name, duration, and outcome. Alert on readiness failure, repeated pipeline failure, or publication failure for the required Jira destination.
+- **Observability:** logs include timestamp, level, service, environment, correlationId, runId, actorId where permitted, event name, duration, and outcome. Alert on readiness failure, repeated pipeline failure, or publication failure for the required Confluence destination.
 
 ## 10. Edge Cases and Failure Behavior
 
@@ -431,7 +433,7 @@ Returns application and PostgreSQL health without exposing infrastructure secret
 - An issue has no assignee, due date, sprint, estimate, or update timestamp: preserve the issue and mark the field unavailable.
 - A finding matches multiple rules: create one finding with all signals retained.
 - A project or sprint is not found: reject that scope with an actionable validation error.
-- Confluence, SMTP, or Teams is unavailable: record the optional publication failure, sanitize diagnostics, expose the pipeline-success report, and permit an idempotent destination retry. Jira publication failure makes publication fail.
+- Confluence is unavailable: record the required publication failure, sanitize diagnostics, keep the pipeline-success report visible, mark the run `Failed`, and permit an idempotent retry. SMTP or Teams unavailability records an optional delivery failure, keeps the report visible, and results in `Completed with delivery warnings`. Artifact upload failure records artifact status `Failed`, keeps the report visible, and causes the GitHub Actions workflow to exit unsuccessfully.
 - The same run is submitted twice: return the existing idempotent run or safely coalesce the requests.
 - Database is unavailable: health becomes unhealthy and no successful report publication is claimed.
 - A report contains no findings: publish the report with a clear no-risk-findings statement and zero counts.
@@ -452,7 +454,7 @@ The MVP is successful when:
 1. An authorized user can view the latest report and inspect sanitized evidence for each finding.
 2. A scheduled Monday run and an authorized manual run execute the same report pipeline.
 3. Jira data for `SAM1` and `KAN` is normalized, evaluated against all initial rules, and persisted in PostgreSQL 15.
-4. The canonical Markdown report is published consistently to configured destinations and uploaded as a workflow artifact; Jira is required and other destinations are independently reported.
+4. The canonical Markdown report is published to required Confluence and configured optional destinations, then uploaded as a GitHub Actions workflow output with explicit artifact status and failure handling.
 5. Repeated runs are idempotent and preserve historical report sections.
 6. Missing configuration, upstream errors, invalid data, and delivery failures produce actionable sanitized outcomes.
 7. Automated tests cover risk thresholds, integrations, persistence, API authorization, rendering states, and failure behavior.

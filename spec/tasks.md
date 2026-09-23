@@ -73,7 +73,7 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 
 - The decisions agree with `spec/specification.md` and `spec/constitution.md`.
 - Scheduled and manual runs reference the same report command.
-- Jira is identified as the required publication destination.
+- Confluence is identified as the required report destination.
 - Contradictory legacy decisions are explicitly marked historical.
 
 ### Milestone 0 acceptance
@@ -153,33 +153,33 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 - Migrations apply to disposable PostgreSQL 15 and repository tests pass.
 - Idempotency, finding uniqueness, UTC storage, retention, and failure-safe transactions are verified.
 
-## Phase 2: Authentication, Authorization, and API Contracts
+## Phase 2: API Contracts and Execution Boundaries
 
-### T2.1 Implement OIDC login and callback
+> Authentication and Authorization are explicitly deferred out of scope for the current implementation phase. The active backlog covers the report pipeline, API contracts, and execution semantics only.
 
-**Depends on:** T0.4
+### T2.1 Deferred: OIDC login and callback
 
-**Work:** Implement authorization-code flow with PKCE, callback handling, logout, session/token lifecycle, and development-only identity mode.
+**Depends on:** None for the current phase
 
-**Acceptance criteria:**
-
-- Production cannot start with `AUTH_MODE=development`.
-- Login validates issuer, audience, signature, expiry, and nonce claims.
-- Logout clears the application session and protected routes require authentication.
-- No access or refresh token is rendered in the UI, logs, or API response body.
-
-### T2.2 Implement role and permission middleware
-
-**Depends on:** T2.1
-
-**Work:** Map configured identity-provider group claims to the three application roles and enforce route permissions.
+**Work:** Deferred. No implementation is planned until a separate Authentication scope is approved.
 
 **Acceptance criteria:**
 
-- `ReportViewer` can read reports, findings, and run status but cannot create runs or edit settings.
-- `DeliveryManager` can create runs but cannot edit administrator configuration or audit access.
-- `Administrator` can validate configuration, edit database-backed settings, retry publications, and review permitted diagnostics.
-- Unauthorized requests return `401` and authenticated insufficient-role requests return `403` with safe error bodies.
+- The task remains explicitly deferred and is not included in the active implementation milestone.
+- A future auth milestone must define provider, issuer, audience, callback URIs, session model, and local-dev behavior.
+- This work is not required to complete Phase 2 or the immediate sprint plan.
+
+### T2.2 Deferred: role and permission middleware
+
+**Depends on:** T2.1 (deferred)
+
+**Work:** Deferred. No route-permission or authorization middleware is implemented in this phase.
+
+**Acceptance criteria:**
+
+- No application role model is introduced in the current scope.
+- No authorization checks are required for the active report/API tasks.
+- The auth design will be specified in a later, separate scope with explicit role and permission definitions.
 
 ### T2.3 Publish shared API types and enums
 
@@ -424,18 +424,18 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 - A version conflict refetches the page and retries once.
 - Diagnostics are sanitized and manager edit access is assumed to be enforced by MCP tooling.
 
-### T5.3 Implement email, Teams, and artifact adapters
+### T5.3 Implement email and Teams adapters
 
 **Depends on:** T5.1, T0.4
 
-**Work:** Add Gmail SMTP delivery, concise Teams summary, and canonical Markdown GitHub artifact output.
+**Work:** Add Gmail SMTP delivery and concise Teams summary. The canonical Markdown file remains an in-process workflow output handled by the GitHub Actions task.
 
 **Acceptance criteria:**
 
 - Each adapter uses bounded timeouts and safe retry behavior.
 - Channel content is derived from the canonical report and cannot contradict its counts or severity.
 - Recipient, sender, webhook, and authentication values come from deployment configuration.
-- Artifact upload includes the canonical Markdown on pipeline success and sanitized diagnostics on failure.
+- Email and Teams content is derived from the canonical report and uses deployment configuration for recipients, sender, endpoint, and authentication.
 
 ### T5.4 Implement publication outcome persistence
 
@@ -445,9 +445,9 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 
 **Acceptance criteria:**
 
-- Jira is classified as required; Confluence, email, Teams, and artifact are independently classified optional unless configured otherwise.
-- Optional failures produce `CompletedWithWarnings` and do not hide a pipeline-success report.
-- Jira publication failure produces publication `Failed` and a failed workflow outcome.
+- Confluence is classified as required; email and Teams are optional. The workflow artifact is tracked separately from publication destinations.
+- Optional email or Teams failures produce `Completed with delivery warnings` and do not hide a pipeline-success report.
+- Confluence publication failure produces run status `Failed`, while the persisted pipeline-success report remains visible for retry.
 - Repeating a destination retry does not duplicate an idempotent publication.
 
 ### T5.5 Add renderer and adapter integration tests
@@ -477,8 +477,8 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 
 **Acceptance criteria:**
 
-- Pipeline statuses are exactly `Queued`, `Running`, `Succeeded`, and `Failed`.
-- Publication statuses are exactly `Pending`, `Succeeded`, `CompletedWithWarnings`, and `Failed`.
+- Public run statuses are exactly `Queued`, `Running`, `Completed`, `Completed with delivery warnings`, and `Failed` in both the API and UI.
+- Pipeline, publication, and workflow-artifact details are tracked separately, using the same final-state labels where applicable.
 - Invalid transitions are rejected and recorded safely.
 - Every run records scope, period, `asOf`, correlation ID, start/completion times, and terminal outcome.
 
@@ -491,8 +491,8 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 **Acceptance criteria:**
 
 - Scheduled and manual invocations call the same command and produce equivalent normalized output for equivalent scope/period.
-- Failure in retrieval, validation, normalization, risk evaluation, rendering, or persistence produces pipeline `Failed` and no publication.
-- Successful pipeline data remains visible when optional publication destinations fail.
+- Failure in retrieval, validation, normalization, risk evaluation, rendering, or persistence produces run status `Failed` and no publication.
+- Successful pipeline data remains visible when optional email or Teams delivery fails, or when required Confluence delivery fails and a retry is available.
 - Logs and audit events contain correlation/run IDs without secrets.
 
 ### T6.3 Enforce idempotency and concurrency
@@ -520,7 +520,8 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 - Manual dispatch accepts validated project and optional sprint inputs.
 - Jobs use the protected environment and never write secrets to artifacts or logs.
 - The job timeout is 20 minutes and concurrency is limited per scope.
-- Canonical Markdown is uploaded on success; sanitized diagnostics are uploaded on failure.
+- Canonical Markdown is uploaded as a workflow output after successful rendering and persistence; sanitized diagnostics are uploaded on failure when possible.
+- Artifact upload failure records artifact status `Failed`, keeps the persisted report visible, and causes the GitHub Actions workflow to exit unsuccessfully.
 
 ### Milestone 6 acceptance
 
@@ -528,18 +529,17 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 
 ## Phase 7: Frontend Workflow and Accessibility
 
-### T7.1 Implement authenticated application shell
+### T7.1 Implement application shell
 
-**Depends on:** T2.1, T2.2, T2.3
+**Depends on:** T2.3
 
-**Work:** Build navigation, current-user/role display, timezone indicator, sign-out, protected routes, and responsive shell.
+**Work:** Build navigation, timezone indicator, run summary areas, and responsive shell without introducing any authentication or role model in this phase.
 
 **Acceptance criteria:**
 
-- Protected screens cannot be opened without authentication.
-- Navigation reflects role permissions without relying only on hidden controls.
-- Sign-out removes access to protected data.
-- Shell remains usable at the 320px minimum viewport.
+- The shell supports the core dashboard and report views without implementing sign-in or protected routes.
+- Navigation works for the active report and run workflows at the 320px minimum viewport.
+- The UI remains intentionally neutral with respect to Authentication and Authorization until a separate scope is approved.
 
 ### T7.2 Implement dashboard and report views
 
@@ -558,14 +558,14 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 
 **Depends on:** T2.5, T6.1
 
-**Work:** Build run form, run status, history, configuration validation, integration health, and permitted retry controls.
+**Work:** Build run form, run status, history, configuration validation, integration health, and retry controls without introducing the deferred authorization model.
 
 **Acceptance criteria:**
 
-- Only Delivery Managers and Administrators can start runs.
-- Only Administrators can edit database-backed settings, validate secrets, or inspect restricted diagnostics.
 - Run status displays pipeline and publication outcomes separately.
+- Configuration validation and retry actions are available in the current UI workflow without requiring a separate auth layer.
 - Confirmation prevents duplicate submission and provides a retry path for allowed failures.
+- The current phase excludes Authentication and Authorization from any permission gating or role-driven UI behavior.
 
 ### T7.4 Implement loading, empty, error, and responsive states
 
@@ -597,14 +597,15 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 
 **Depends on:** T7.5, T6.4
 
-**Work:** Add Playwright coverage for each role, report inspection, manual run, failure/warning states, retries, mobile layout, and URL filters.
+**Work:** Add Playwright coverage for report inspection, manual run, failure/warning states, retries, mobile layout, and URL filters without introducing auth-based role journeys.
 
 **Acceptance criteria:**
 
-- Viewer, Delivery Manager, and Administrator journeys enforce the permission matrix.
+- Core user journeys for report viewing and run execution are covered.
 - A report with optional publication warnings remains inspectable.
 - Manual run progress and terminal outcomes are covered.
 - Tests run against a documented seeded or disposable environment.
+- Authentication and Authorization remain explicitly deferred and are not part of the acceptance criteria in this phase.
 
 ### Milestone 7 acceptance
 
@@ -622,7 +623,7 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 
 - Logs include timestamp, level, service, environment, correlation ID, run ID, actor ID where permitted, event, duration, and outcome.
 - Metrics distinguish pipeline failures from publication warnings/failures.
-- Alerts cover readiness failure, repeated pipeline failure, and required Jira publication failure.
+- Alerts cover readiness failure, repeated pipeline failure, and required Confluence publication failure.
 - Diagnostics retention follows the 90-day policy.
 
 ### T8.2 Perform security and dependency review
@@ -660,7 +661,7 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 **Acceptance criteria:**
 
 - A new operator can deploy from a clean checkout using documented steps.
-- Run failure, required Jira publication failure, optional delivery warning, and retry procedures are documented.
+- Run failure, required Confluence publication failure, optional delivery warning, artifact upload failure, and retry procedures are documented.
 - No committed documentation contains real secrets or production-only credentials.
 - Rollback and recovery owners are named by role.
 
