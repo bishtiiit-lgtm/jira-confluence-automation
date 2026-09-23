@@ -1,8 +1,8 @@
 # Feature Specification: Jira/Confluence Delivery Risk Summary
 
-**Status:** Draft
-**Version:** 1.0.0
-**Date:** 2026-09-22
+**Status:** Approved for implementation planning
+**Version:** 1.1.0
+**Date:** 2026-09-23
 **Constitution:** `spec/constitution.md` v1.0.0
 
 ## 1. Summary
@@ -42,11 +42,11 @@ Can view reports, summaries, findings, source links, and run status. Viewers can
 
 ### Administrator
 
-Can manage non-secret configuration, integration settings, permissions, thresholds, and operational controls. Administrator actions must be authenticated, authorized, audited, and protected from accidental disclosure.
+Can manage database-backed non-secret business settings, thresholds, destination enablement, and operational controls. Deployment-managed environment values and secrets are read-only in the UI; administrators can validate their presence but cannot view or edit secret values. Administrator actions must be authenticated, authorized, audited, and protected from accidental disclosure.
 
 ### Automation Worker
 
-Runs scheduled or manually requested report jobs using deployment-managed credentials. It can retrieve external data, persist normalized results, publish configured outputs, and record sanitized audit events.
+Runs the same command invoked by scheduled and manually dispatched GitHub Actions workflows, using environment-scoped deployment credentials. It can retrieve external data, persist normalized results, publish configured outputs, and record sanitized audit events. GitHub Actions is the scheduler and worker host for MVP; no long-running worker or queue service is required.
 
 ## 4. User Scenarios and Acceptance Tests
 
@@ -63,7 +63,7 @@ Runs scheduled or manually requested report jobs using deployment-managed creden
 
 ### P1: Generate a report manually
 
-**Given** an authorized user selects an optional project and sprint scope, **when** the user starts a report run, **then** the backend validates the scope, queues or executes one idempotent run, and exposes progress and final outcome.
+**Given** an authorized user selects an optional project and sprint scope, **when** the user starts a report run, **then** the backend validates the scope, creates one idempotent run request, and dispatches the same GitHub Actions workflow used by the schedule. The UI exposes queued, running, and final outcomes.
 
 **Acceptance tests:**
 
@@ -132,7 +132,7 @@ The frontend shall use a consistent application shell with a primary navigation 
 - Overall risk banner showing `High`, `Medium`, `Low`, or `No findings`.
 - Report period, generated timestamp, scope, last successful run, and run status.
 - Summary cards for total findings, High findings, overdue items, blocked items, stale items, and missed commitments.
-- Project summary for `SAM1` and `KAN`, including issue count, sprint completion, committed points, completed points, and risk level.
+- A failed data-pipeline run is marked failed and does not publish a report.
 - Recent runs table with status, scope, duration, requester or schedule source, and links to details.
 - Primary actions: `View report`, `Run report`, and `View run history` according to permissions.
 
@@ -298,42 +298,44 @@ The frontend shall use a consistent application shell with a primary navigation 
 ### 6.1 Configuration
 
 - The backend shall load configuration from environment variables and deployment secret stores.
-- Required non-secret settings shall include Jira base URL, project keys, team filter, reporting timezone, risk thresholds, Confluence space/page identifiers, report recipients, and delivery toggles.
-- Required secrets shall include Atlassian authentication, SMTP authentication, and Teams webhook or workflow credentials as applicable.
+- Deployment-managed non-secret settings shall include Jira base URL, project keys, team identifiers, reporting timezone, Confluence space/page identifiers, report recipients, delivery toggles, and GitHub repository/environment names.
+- Database-managed business settings shall include risk thresholds, configurable status and priority mappings, lookback duration, retention periods, and optional destination enablement. Changes are versioned and do not alter historical reports.
+- Required secrets shall include the Atlassian user token, SMTP authentication, and Teams webhook or workflow credentials as applicable. The Atlassian token is not required to belong to a service account.
+- GitHub Actions shall read secrets from the protected environment named by deployment configuration; secrets shall never be persisted by the application.
 - The backend shall fail startup or fail the requested run with actionable errors when required configuration is missing or invalid.
 - Thresholds shall support the initial defaults: stale at 5 calendar days, sprint completion at 80%, and final-sprint remaining commitment at 20%.
 
 ### 6.2 Jira retrieval and normalization
 
 - The Jira adapter shall authenticate using deployment-managed credentials.
-- It shall retrieve all issue types in `SAM1` and `KAN`, active and recently completed sprints, issue fields, changelogs, issue links, estimates, statuses, and source URLs.
+- It shall retrieve all issue types in `SAM1` and `KAN`, active and completed sprints from the configurable 90-day lookback, issue fields, changelogs, issue links, estimates, statuses, and source URLs.
 - It shall support pagination, bounded timeouts, safe retries, rate-limit handling, and normalized error reporting.
-- It shall apply the configured team filter represented by `bishtiiit` after the exact group, account ID, or project-role mapping is confirmed.
+- It shall apply the configured team filter to Jira participation: an issue is included when a matching team member is the assignee, reporter, watcher, or participant recorded by the configured Jira API. The configured project scope is `KAN` and `SAM1`; unassigned issues are retained when they otherwise belong to the selected project scope and are marked as unassigned.
 - It shall normalize external responses into typed domain records before risk evaluation.
 
 ### 6.3 Risk evaluation
 
 The risk engine shall evaluate each configured rule:
 
-- **Overdue:** unresolved issue is at least one day past its due date.
-- **Blocked:** issue has a blocked status or an unresolved blocking dependency.
-- **Stale:** active issue has not been updated for at least five calendar days.
-- **Missed commitment:** issue is incomplete at sprint end, or sprint completion is below 80%.
-- **High priority:** issue priority is `Highest` or `High`.
-- **Dependency risk:** a blocking predecessor is overdue, blocked, or stale.
-- **Story-point variance:** completed points are below 80% of committed points, or remaining points exceed 20% of original commitment during the final 20% of the sprint.
+- **Overdue:** unresolved issue whose due date, interpreted in Asia/Kolkata when no time is supplied, is at least one calendar day before the report `asOf` date.
+- **Blocked:** issue is in a configured blocked status, or has an unresolved inward Jira link whose configured type is `blocks`.
+- **Stale:** active issue has not been updated for at least five calendar days, excluding no special weekend or holiday treatment. Missing `updated` data is a validation failure, not a stale signal.
+- **Missed commitment:** at the sprint end boundary, an issue is incomplete by status category or configured completed-status list. A completion exactly at the end timestamp is on time. A sprint is also at risk when completion is below 80%.
+- **High priority:** priority name matches configured `Highest` or `High` values case-insensitively.
+- **Dependency risk:** a predecessor identified by a configured `blocks` link is overdue, blocked, or stale.
+- **Story-point variance:** completed points are below 80% of committed points, or remaining points exceed 20% of original commitment during the final 20% of the sprint. Jira `Original estimate` is the estimate field; null or fractional values are retained and excluded from point arithmetic when unavailable. Zero commitment produces no variance percentage and an explicit not-applicable result.
 
-The engine shall assign configurable `High`, `Medium`, or `Low` severity, retain all triggering signals, deduplicate related findings, and calculate project, sprint, and overall summaries.
+The engine shall assign severity using the highest-severity triggered signal: overdue, blocked, missed commitment, and dependency risk are `High`; stale, high priority, and story-point variance are `Medium`; low-confidence informational signals are `Low`. Any High finding makes its project, sprint, and overall report severity High; otherwise any Medium makes it Medium; otherwise it is Low or `No findings`. Findings use `(reportRunId, sprintId-or-null, jiraIssueKey)` as the uniqueness key and merge signals in deterministic rule order.
 
 ### 6.4 Reports and publication
 
 - Markdown shall be the canonical report format.
 - The report shall include generation timestamp, reporting period, overall risk, project and sprint summaries, grouped findings, severity, evidence, recommendations, and Jira source links.
-- The Confluence adapter shall update a configured stable page and preserve dated report history.
+- The Confluence adapter shall update space `teamb94933220eab48ca921cf26455822d56`, page target `https://bishtiiit.atlassian.net/wiki/x/uIAB`, using the Confluence storage representation. It shall insert or replace a section marked by the report-period idempotency marker, preserve prior dated sections, and retry once after refetching the page version on a conflict. Confluence manager edit access is enforced by the MCP tooling.
 - The SMTP adapter shall send the report or approved HTML rendering to the configured recipient list.
 - The Teams adapter shall post a concise summary containing counts, highest-severity findings, and report links.
 - Delivery adapters shall use bounded timeouts, safe retries where appropriate, and sanitized diagnostics.
-- A report shall not be marked successfully published when required retrieval, validation, rendering, or configured delivery steps fail.
+- Jira retrieval, validation, normalization, risk evaluation, rendering, and persistence form the data pipeline. A failure in any of these produces pipeline status `Failed` and no report publication. Publication has independent per-destination statuses. Jira is the only required destination; a Jira failure makes publication `Failed`, while Confluence, email, Teams, and the GitHub artifact are optional and may produce `Completed with delivery warnings`. A pipeline-success report is visible in the UI regardless of optional publication failures, and each destination can be retried idempotently.
 
 ### 6.5 Web API and frontend
 
@@ -342,6 +344,9 @@ The engine shall assign configurable `High`, `Medium`, or `Low` severity, retain
 - React shall display current and historical reports, filters by project/sprint/severity/rule, finding details, run progress, empty states, failures, and retry actions.
 - The frontend shall never receive integration credentials or perform direct Jira, Confluence, SMTP, or Teams calls.
 - User-visible timestamps shall identify the relevant timezone.
+- OIDC is the authentication contract. The frontend uses the authorization-code flow with PKCE; the backend validates issuer, audience, signature, expiry, and nonce claims. The stable subject claim is the user identifier. Roles are supplied through a configured group/role claim for `DeliveryManager`, `ReportViewer`, and `Administrator`. Local development may use a documented development identity only when `AUTH_MODE=development`; production rejects that mode.
+- `DeliveryManager` and `Administrator` may create runs. Only `Administrator` may change database-backed configuration. All report and finding reads require authentication; administrator diagnostics and audit events require `Administrator`.
+- API requests use ISO 8601 UTC timestamps, camelCase JSON, stable enum strings, cursor pagination with a maximum page size of 100, `Idempotency-Key` on run creation, and correlation IDs returned in `X-Correlation-Id`. Validation errors use `400`, authentication `401`, authorization `403`, missing resources `404`, conflicts `409`, upstream failures `502`, and unexpected failures `500`.
 
 ### 6.6 Persistence
 
@@ -353,7 +358,7 @@ PostgreSQL 15 shall persist at minimum:
 - Publication attempts and outcomes for Confluence, email, Teams, and artifacts.
 - Sanitized audit events for manual runs, configuration changes, and permission-sensitive actions.
 
-Schema changes shall use versioned migrations. Sensitive values and unnecessary raw payloads shall not be persisted.
+Schema changes shall use versioned migrations. Sensitive values and unnecessary raw payloads shall not be persisted. PostgreSQL identifiers use snake_case; API fields use camelCase. All database timestamps are UTC `timestamptz`. Foreign keys use restrictive deletion for report history, uniqueness is enforced on report scope/period and finding identity, and indexes cover report period/status, project/sprint, finding severity/signal, and publication status. Migrations are owned by the backend and run before the application starts. Reports and findings are retained for 24 months, audit events for 24 months, and sanitized publication diagnostics for 90 days; deletion is an administrator-only, audited operation subject to retention policy.
 
 ## 7. Data Model
 
@@ -403,15 +408,21 @@ Validates non-secret configuration and secret presence without returning secret 
 
 Returns application and PostgreSQL health without exposing infrastructure secrets.
 
+### API behavior
+
+`/health/live` reports process liveness and `/health/ready` reports database and required configuration readiness. List endpoints return `{ items, nextCursor }`. Run status separates `pipelineStatus` (`Queued`, `Running`, `Succeeded`, `Failed`) from `publicationStatus` (`Pending`, `Succeeded`, `CompletedWithWarnings`, `Failed`). Manual runs are rejected with `409` when an equivalent scope/period is already queued or running, or return the existing run when the idempotency key matches. All errors use `{ error: { code, message, retryable, correlationId, details? } }` without upstream payloads or secrets.
+
 ## 9. Non-Functional Requirements
 
 - **Security:** enforce least privilege, validate inputs, redact secrets and personal data, and keep credentials server-side.
 - **Reliability:** use idempotency keys for report runs and publication attempts; bound all external calls with timeouts.
-- **Performance:** the dashboard should return a paginated report view without loading all historical findings; long report jobs shall run asynchronously when needed.
-- **Accessibility:** meet WCAG 2.1 AA-oriented keyboard, focus, contrast, and semantic HTML expectations.
+- **Performance:** dashboard and paginated report APIs target p95 under 2 seconds for 20 concurrent users; a normal report targets completion within 10 minutes; GitHub Actions jobs have a 20-minute timeout and a maximum concurrency of one per scope.
+- **Accessibility:** target WCAG 2.1 AA with keyboard-complete workflows, visible focus, semantic tables/forms, non-color severity indicators, automated axe checks, and a keyboard/screen-reader smoke test for each primary screen.
 - **Observability:** emit structured logs, correlation identifiers, run metrics, health status, and sanitized failure diagnostics.
 - **Compatibility:** support the versions declared by the constitution: React 18, Vite, Node.js, Express, PostgreSQL 15, and Docker Compose.
 - **Maintainability:** keep domain logic independent from Express and React, use TypeScript types at service boundaries, and document migrations and configuration.
+- **Browser support:** current and previous major versions of Chrome, Edge, Firefox, and Safari; minimum supported viewport is 320 CSS pixels.
+- **Observability:** logs include timestamp, level, service, environment, correlationId, runId, actorId where permitted, event name, duration, and outcome. Alert on readiness failure, repeated pipeline failure, or publication failure for the required Jira destination.
 
 ## 10. Edge Cases and Failure Behavior
 
@@ -420,7 +431,7 @@ Returns application and PostgreSQL health without exposing infrastructure secret
 - An issue has no assignee, due date, sprint, estimate, or update timestamp: preserve the issue and mark the field unavailable.
 - A finding matches multiple rules: create one finding with all signals retained.
 - A project or sprint is not found: reject that scope with an actionable validation error.
-- Confluence, SMTP, or Teams is unavailable: record the publication failure, sanitize diagnostics, and apply the configured required-destination policy.
+- Confluence, SMTP, or Teams is unavailable: record the optional publication failure, sanitize diagnostics, expose the pipeline-success report, and permit an idempotent destination retry. Jira publication failure makes publication fail.
 - The same run is submitted twice: return the existing idempotent run or safely coalesce the requests.
 - Database is unavailable: health becomes unhealthy and no successful report publication is claimed.
 - A report contains no findings: publish the report with a clear no-risk-findings statement and zero counts.
@@ -441,20 +452,22 @@ The MVP is successful when:
 1. An authorized user can view the latest report and inspect sanitized evidence for each finding.
 2. A scheduled Monday run and an authorized manual run execute the same report pipeline.
 3. Jira data for `SAM1` and `KAN` is normalized, evaluated against all initial rules, and persisted in PostgreSQL 15.
-4. The canonical Markdown report is published consistently to configured destinations and uploaded as a workflow artifact.
+4. The canonical Markdown report is published consistently to configured destinations and uploaded as a workflow artifact; Jira is required and other destinations are independently reported.
 5. Repeated runs are idempotent and preserve historical report sections.
 6. Missing configuration, upstream errors, invalid data, and delivery failures produce actionable sanitized outcomes.
 7. Automated tests cover risk thresholds, integrations, persistence, API authorization, rendering states, and failure behavior.
 8. The application passes formatting, linting, TypeScript checks, tests, migration checks, security review, and Markdown validation.
 
-## 13. Open Decisions and Assumptions
+## 13. Approved Assumptions
 
-- Confirm the exact Jira team identifier represented by `bishtiiit` before production use.
-- Resolve the Confluence draft URL to a stable space key and page ID.
-- Confirm the Teams destination and webhook or workflow endpoint.
-- Confirm Gmail SMTP host, port, sender, recipient list, and authentication approach. Credentials remain deployment secrets.
-- Confirm the final permission model: the Delivery Manager and administrators may edit where required; other users are view-only.
-- The original business specification describes Python modules, but this SpecKit specification follows the ratified constitution and defines the implementation using React 18/Vite, Node.js/Express, TypeScript, PostgreSQL 15, and Docker Compose.
+- The Jira scope is projects `KAN` and `SAM1`; team participation filtering uses assignee, reporter, watcher, or recorded issue participant.
+- Jira `Original estimate` is the estimate source for MVP; administrator configuration may identify a tenant-specific field alias.
+- The Confluence target is page `uIAB` in space `teamb94933220eab48ca921cf26455822d56`; updates are idempotent by report-period marker.
+- The Atlassian token is a user token, not necessarily a service-account token. Confluence manager edit access is enforced through MCP tooling.
+- GitHub Actions uses protected environment secrets and invokes the shared report command for both schedule and manual dispatch.
+- SMTP uses Gmail with deployment-configured host, port, sender, and recipients; address values remain environment configuration, not committed specification data.
+- Teams destination details are deployment configuration. It is optional unless explicitly enabled as required by an administrator.
+- The original Python architecture and stale repository references are historical and superseded by the ratified Node.js/Express/TypeScript architecture.
 
 ## 14. Traceability
 
