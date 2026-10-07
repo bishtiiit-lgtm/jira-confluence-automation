@@ -125,7 +125,8 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 - Repository methods use typed inputs/outputs and do not expose database rows directly to the HTTP layer.
 - Transactions prevent partially persisted successful reports.
 - Duplicate inserts are handled through constraints and idempotent upsert behavior.
-- Integration tests cover normal reads/writes, constraint failures, rollback, and pagination indexes.
+- Repositories cover report runs, configuration snapshots, normalized Jira snapshots/links, findings/signals, summaries, publication/artifact attempts, and audit events.
+- Integration tests use an isolated PostgreSQL database and cover normal reads/writes, idempotent replay, constraint failures, transaction rollback, and the report-run pagination index.
 
 ### T1.4 Implement configuration snapshots and business settings
 
