@@ -54,7 +54,7 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 
 **Depends on:** T0.1
 
-**Work:** Create typed configuration loading, validation, and `.env.example` entries for deployment-managed values, database settings, OIDC, Jira, destinations, retention, and runtime controls.
+**Work:** Create typed configuration loading, validation, and `.env.example` entries for runtime, database, Jira, destinations, retention, and deployment/workflow settings. Authentication and Authorization configuration remains deferred from the current scope.
 
 **Acceptance criteria:**
 
@@ -62,19 +62,21 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 - Invalid URLs, timezones, project keys, durations, enum values, and missing required values produce actionable errors.
 - `.env.example` contains names and safe placeholders only.
 - Secret values are never included in validation errors or logs.
+- Application identity-provider, session, and role configuration is not introduced while Authentication and Authorization are deferred.
 
 ### T0.5 Record architecture decisions
 
 **Depends on:** T0.1, T0.4
 
-**Work:** Document GitHub Actions as scheduler/worker host, OIDC authentication, configuration ownership, run statuses, publication semantics, and approved integration assumptions.
+**Work:** Document GitHub Actions as scheduler/worker host, application AuthN/AuthZ scope (deferred), configuration ownership, run statuses, publication semantics, and approved integration assumptions in `spec/architecture-decisions.md`.
 
 **Acceptance criteria:**
 
 - The decisions agree with `spec/specification.md` and `spec/constitution.md`.
-- Scheduled and manual runs reference the same report command.
+- The record specifies the same report command contract for scheduled and manual runs and distinguishes the planned command from the current workflow scaffold.
 - Confluence is identified as the required report destination.
 - Contradictory legacy decisions are explicitly marked historical.
+- Unresolved integration details are listed as open rather than presented as approved decisions.
 
 ### Milestone 0 acceptance
 
@@ -87,7 +89,7 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 
 **Depends on:** T0.3, T0.4
 
-**Work:** Define tables and relationships for runs, configuration snapshots, projects, sprints, issues, links, findings, summaries, publications, and audit events.
+**Work:** Define tables and relationships for runs, configuration snapshots, projects, sprints, issues, links, findings, summaries, publications, and audit events in `spec/database.md` before migration implementation.
 
 **Acceptance criteria:**
 
@@ -95,6 +97,7 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 - Foreign keys, restrictive history deletion, uniqueness constraints, and required indexes are defined.
 - Finding uniqueness supports `(report_run_id, sprint_id-or-null, jira_issue_key)`.
 - Report scope and period cannot create duplicate equivalent runs.
+- The design specifies required indexes, retention ownership, and the separation of run, publication, and artifact outcomes.
 
 ### T1.2 Implement and verify migrations
 

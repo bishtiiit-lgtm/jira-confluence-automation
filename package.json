@@ -2,6 +2,7 @@
   "name": "jira-confluence-delivery-risk-summary",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "workspaces": [
     "backend",
     "frontend",
@@ -11,7 +12,18 @@
     "dev:backend": "npm --workspace backend run dev",
     "dev:frontend": "npm --workspace frontend run dev",
     "build": "npm --workspace backend run build && npm --workspace frontend run build",
-    "typecheck": "npm --workspace backend run typecheck && npm --workspace frontend run typecheck",
-    "lint": "npm --workspace backend run lint && npm --workspace frontend run lint"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write \"**/*.{ts,tsx,json,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,yml,yaml}\"",
+    "test": "npm run test --workspace backend && npm run test --workspace frontend",
+    "test:coverage": "npm run test:coverage --workspace backend && npm run test:coverage --workspace frontend",
+    "validate:markdown": "python tools/validate_markdown.py .",
+    "validate": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run validate:markdown"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9",
+    "prettier": "^3.9.9",
+    "typescript-eslint": "^8.71.1"
   }
 }

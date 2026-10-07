@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+package-lock.json
+markdown-validation-report.json
+.github/workflows/delivery-risk-summary.yml

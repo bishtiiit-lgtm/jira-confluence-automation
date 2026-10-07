@@ -1,3 +1,12 @@
+# Module 15 Completion Report
+
+## Script Metadata
+- Filename: `tools/validate_markdown.py`
+- Language: Python
+- Purpose: Processes Markdown files individually and validates UTF-8 encoding, final newlines, trailing whitespace, ATX heading structure, heading levels, and heading spacing. It emits a JSON result for every file and an aggregate summary.
+
+## Script Contents
+
 import argparse
 import json
 import re
@@ -9,12 +18,7 @@ FENCE_PATTERN = re.compile(r"^\s*(```|~~~)")
 
 
 def markdown_files(root: Path) -> list[Path]:
-    excluded_directories = {".git", "node_modules", "dist", "coverage", "__pycache__"}
-    return sorted(
-        path
-        for path in root.rglob("*.md")
-        if path.is_file() and not excluded_directories.intersection(path.parts)
-    )
+    return sorted(path for path in root.rglob("*.md") if path.is_file())
 
 
 def validate_file(path: Path, root: Path) -> dict:
@@ -108,3 +112,58 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+## Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `root` | Root directory to scan recursively for `.md` files | `.` |
+| `--output` | Optional path where the JSON report is written | Not set; no file is written |
+
+## Test Run Output
+
+{
+  "files": [
+    {
+      "path": "calculate-compound-interest.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "create-status-report.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "creating-instructions.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "main.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "update-confluence-project-status.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "use-retrieve_issue.agent.md",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "path": "validate-markdown.agent.md",
+      "status": "pass",
+      "issues": []
+    }
+  ],
+  "summary": {
+    "files_checked": 7,
+    "files_passed": 7,
+    "files_failed": 0,
+    "issues": 0
+  }
+}

@@ -21,7 +21,7 @@ Authentication and Authorization are explicitly out of scope for this implementa
 - Configure TypeScript, formatting, linting, test runner, and Markdown validation.
 - Add Docker Compose PostgreSQL 15 with health check, persistent local volume, and documented credentials.
 - Create environment configuration schema and `.env.example` with safe placeholders.
-- Record the approved architecture, status model, configuration ownership, and integration assumptions.
+- Record the approved architecture, status model, configuration ownership, and integration assumptions in `spec/architecture-decisions.md`; mark unresolved integration details as open.
 
 **Milestone 0:** A clean checkout installs dependencies, starts PostgreSQL, runs type checking and tests, and validates the specification documents.
 
@@ -31,7 +31,8 @@ Authentication and Authorization are explicitly out of scope for this implementa
 
 **Work items:**
 
-- Define PostgreSQL migrations using UTC `timestamptz`, snake_case identifiers, foreign keys, indexes, and uniqueness constraints.
+- Design the logical relational schema and ERD in `spec/database.md` before migration implementation.
+- Implement PostgreSQL migrations from the approved schema using UTC `timestamptz`, snake_case identifiers, foreign keys, indexes, and uniqueness constraints.
 - Implement repositories for report runs, projects, sprints, issues, links, findings, summaries, publication attempts, and audit events.
 - Implement versioned database-backed business settings and immutable configuration snapshots per run.
 - Implement environment and secret-presence validation without persisting or logging secret values.
@@ -116,7 +117,7 @@ Authentication and Authorization are explicitly out of scope for this implementa
 
 ## Phase 7: Frontend Workflow and Accessibility
 
-**Objective:** Deliver the authenticated dashboard and operational run experience.
+**Objective:** Deliver the report dashboard and operational run experience without implementing the deferred Authentication and Authorization scope.
 
 **Work items:**
 
@@ -124,9 +125,9 @@ Authentication and Authorization are explicitly out of scope for this implementa
 - Implement server-side pagination, filters, URL-persisted report filters, explicit loading/empty/error/warning states, and external-link treatment.
 - Display separate pipeline/publication outcomes and make report visibility after optional delivery failure clear.
 - Implement keyboard-complete navigation, focus management, semantic tables/forms, non-color severity indicators, and responsive behavior down to 320px.
-- Add browser tests and axe checks for primary screens and role-specific navigation.
+- Add browser tests and axe checks for primary screens and role-agnostic navigation.
 
-**Milestone 7:** Playwright tests cover the primary user journeys for each role, mobile layout, retry states, stale/partial reports, and accessible keyboard operation.
+**Milestone 7:** Playwright tests cover report inspection and run workflows, mobile layout, retry states, stale/partial reports, and accessible keyboard operation without role-based authorization checks.
 
 ## Phase 8: Operational Hardening and Release
 
@@ -154,7 +155,7 @@ Authentication and Authorization are explicitly out of scope for this implementa
 
 ## Suggested Delivery Order
 
-1. Phases 0-2: baseline, persistence, identity, and contracts.
+1. Phases 0-2: baseline, persistence, API contracts, and execution boundaries; application identity is deferred.
 2. Phases 3-5: Jira snapshot, risk engine, rendering, and publication.
 3. Phases 6-7: orchestration, GitHub Actions, and frontend workflows.
 4. Phase 8: operational hardening and release readiness.
