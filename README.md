@@ -66,3 +66,9 @@ npm run validate
 ```
 
 The command checks formatting, lint, TypeScript, backend and frontend tests, and Markdown. Run `npm run test:coverage` to generate package-specific coverage reports. GitHub Actions runs both commands for pushes and pull requests.
+
+## Database migrations
+
+Start the local PostgreSQL service before running database commands. From the repository root, use `npm run db:migrate:check` to validate migration numbering and up/down pairs, `npm run db:migrate:status` to inspect applied and pending versions, `npm run db:migrate` to apply pending migrations, and `npm run db:migrate:down` to roll back the latest version. The rollback command is intentionally limited to one migration per invocation.
+
+Run `npm run db:migrate:verify` to create an isolated temporary database and verify clean initialization, repeatable apply, checksum/order rejection, rollback, and forward recovery. The verifier drops only its uniquely named temporary database when finished; it does not reset the configured development database. CI runs this verifier against a disposable PostgreSQL 15 service.

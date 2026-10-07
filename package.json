@@ -18,12 +18,18 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,json,yml,yaml}\"",
     "test": "npm run test --workspace backend && npm run test --workspace frontend",
     "test:coverage": "npm run test:coverage --workspace backend && npm run test:coverage --workspace frontend",
+    "db:migrate:check": "npm run db:migrate:check --workspace backend",
+    "db:migrate:status": "npm run db:migrate:status --workspace backend",
+    "db:migrate:verify": "npm run db:migrate:verify --workspace backend",
     "validate:markdown": "python tools/validate_markdown.py .",
-    "validate": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run validate:markdown"
+    "validate": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run db:migrate:check && npm run validate:markdown"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.9",
     "prettier": "^3.9.9",
     "typescript-eslint": "^8.71.1"
+  },
+  "dependencies": {
+    "jira-confluence-delivery-risk-summary": "file:.."
   }
 }

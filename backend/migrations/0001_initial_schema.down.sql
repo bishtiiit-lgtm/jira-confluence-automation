@@ -1,0 +1,15 @@
+DROP TABLE audit_events;
+DROP TABLE workflow_artifact_attempts;
+DROP TABLE publication_attempts;
+DROP TABLE risk_summary_counts;
+DROP TABLE risk_summaries;
+DROP TABLE finding_signals;
+DROP TABLE findings;
+DROP TABLE issue_links;
+DROP TABLE issue_sprint_memberships;
+DROP TABLE issue_snapshots;
+DROP TABLE sprint_snapshots;
+DROP TABLE project_snapshots;
+DROP TABLE run_configuration_snapshots;
+DROP TABLE report_runs;
+DROP TABLE business_configuration_versions;

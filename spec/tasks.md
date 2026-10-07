@@ -103,14 +103,16 @@ Each task has one primary outcome and a completion gate. Tasks within a phase ma
 
 **Depends on:** T1.1
 
-**Work:** Add versioned migrations and migration checks for apply, rollback or forward recovery, and clean database initialization.
+**Work:** Add paired versioned SQL migrations and a backend migration runner with transactional apply/rollback, ordered history, checksum validation, and an isolated PostgreSQL 15 lifecycle verifier.
 
 **Acceptance criteria:**
 
 - A disposable PostgreSQL 15 database can be initialized from zero migrations.
-- Migrations are repeatable in CI and fail clearly when out of order or incomplete.
-- Schema inspection confirms required constraints and indexes.
-- Migration status is part of the documented quality gate.
+- Applying migrations repeatedly is a no-op after the current version is reached.
+- Migration checks fail clearly for gaps, unknown applied versions, mismatched names, or checksum drift.
+- Rollback is transactional and limited to the latest migration; forward recovery succeeds afterward.
+- The disposable-database verifier confirms the schema's tables, key constraints, and required indexes without resetting the configured development database.
+- `npm run db:migrate:check` is part of `npm run validate`, and CI runs `npm run db:migrate:verify` against PostgreSQL 15.
 
 ### T1.3 Implement persistence repositories
 

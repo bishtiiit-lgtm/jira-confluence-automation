@@ -9,11 +9,17 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint . --ext .ts",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "db:migrate": "node scripts/migrate.mjs up",
+    "db:migrate:down": "node scripts/migrate.mjs down",
+    "db:migrate:status": "node scripts/migrate.mjs status",
+    "db:migrate:check": "node scripts/migrate.mjs check",
+    "db:migrate:verify": "node scripts/verify-migrations.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
+    "pg": "^8.13.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {

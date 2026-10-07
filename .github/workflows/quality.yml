@@ -10,6 +10,22 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: delivery_risk_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d delivery_risk_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/delivery_risk_ci
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -30,6 +46,9 @@ jobs:
 
       - name: Run quality checks
         run: npm run validate
+
+      - name: Verify migrations on disposable databases
+        run: npm run db:migrate:verify
 
       - name: Run tests with coverage
         run: npm run test:coverage
